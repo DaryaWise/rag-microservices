@@ -1,9 +1,3 @@
-# Вот готовый \*\*README.md\*\*. Вставь в корень репозитория как есть.
-
-# 
-
-# ````md
-
 # \# RAG Microservices (gateway · retriever · reasoner)
 
 # 
