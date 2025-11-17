@@ -1,0 +1,78 @@
+version: "3.9"
+name: rag-stack
+
+services:
+  retriever:
+    build:
+      context: .
+      dockerfile: services/retriever/Dockerfile
+    environment:
+      RETRIEVER_DATA_DIR: /data
+      RETRIEVER_VSTORE_DIR: /vectorstore
+      RETRIEVER_CHUNK_SIZE: "800"
+      RETRIEVER_CHUNK_OVERLAP: "100"
+      RETRIEVER_RERANK_ENABLED: "true"
+      RETRIEVER_RERANK_TOP_N: "20"
+    volumes:
+      - ./data:/data
+      - ./vectorstore:/vectorstore
+      - ./models:/root/.cache
+    ports: ["8001:8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  reasoner:
+    build:
+      context: .
+      dockerfile: services/reasoner/Dockerfile
+    environment:
+      REASONER_USE_EXTERNAL_LLM: "false"
+      REASONER_OLLAMA_HOST: http://ollama:11434
+      REASONER_OLLAMA_MODEL: mistral
+      REASONER_TEMPERATURE: "0.3"
+    depends_on:
+      - ollama
+    volumes:
+      - ./models:/root/.cache
+    ports: ["8002:8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    environment:
+      GATEWAY_RETRIEVER_URL: http://retriever:8000
+      GATEWAY_REASONER_URL:  http://reasoner:8000
+      GATEWAY_HTTP_TIMEOUT_SEC: "15"
+      GATEWAY_RETRIES: "2"
+    depends_on:
+      - retriever
+      - reasoner
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  ollama: {}

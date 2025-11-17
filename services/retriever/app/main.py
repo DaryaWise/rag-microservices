@@ -185,12 +185,7 @@ def retrieve(req: RetrieveRequest):
         # без реранка просто топ-k по FAISS
         final = sorted(prelim, key=lambda x: x["score"], reverse=True)[:req.top_k]
 
-    logger.info(json.dumps({
-        "event": "retrieve",
-        "query": req.query,
-        "faiss_k": initial_k,
-        "returned": len(final),
-        "rerank": RERANK_ENABLED
-    }, ensure_ascii=False))
+    for i, r in enumerate(final, start=1):
+        r["rank"] = i
 
     return {"query": req.query, "results": final}
